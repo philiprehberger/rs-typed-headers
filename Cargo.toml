@@ -1,0 +1,13 @@
+[package]
+name = "philiprehberger-typed-headers"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+authors = ["Philip Rehberger"]
+description = "Strongly-typed HTTP header parsing and construction for common headers"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/philiprehberger/rs-typed-headers"
+documentation = "https://docs.rs/philiprehberger-typed-headers"
+keywords = ["http", "headers", "typed", "content-type", "cache-control"]
+categories = ["web-programming", "parser-implementations"]
