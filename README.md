@@ -10,12 +10,10 @@ Strongly-typed HTTP header parsing and construction for common headers
 
 ```toml
 [dependencies]
-philiprehberger-typed-headers = "0.1.1"
+philiprehberger-typed-headers = "0.1.2"
 ```
 
 ## Usage
-
-### Content-Type
 
 ```rust
 use philiprehberger_typed_headers::ContentType;
