@@ -10,7 +10,7 @@ Strongly-typed HTTP header parsing and construction for common headers
 
 ```toml
 [dependencies]
-philiprehberger-typed-headers = "0.1.0"
+philiprehberger-typed-headers = "0.1.1"
 ```
 
 ## Usage
