@@ -1,17 +1,14 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## 0.1.2 (2026-03-22)
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- Fix README and CHANGELOG compliance
 
 ## 0.1.1 (2026-03-20)
 
 - Re-release with registry token configured
 
-## [0.1.0] - 2026-03-20
-
-### Added
+## 0.1.0 (2026-03-20)
 
 - `ContentType` struct with parsing and common constructors (json, html, text, form, multipart, xml, octet_stream)
 - `CacheControl` struct with parsing and builder pattern
@@ -23,5 +20,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `HeaderError` enum for parse error reporting
 - Display implementations for all header types
 - Inline base64 encoding for Basic auth (no external dependencies)
-
-[0.1.0]: https://github.com/philiprehberger/rs-typed-headers/releases/tag/v0.1.0
