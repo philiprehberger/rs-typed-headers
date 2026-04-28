@@ -262,6 +262,43 @@ impl ContentType {
     pub fn mime_type(&self) -> String {
         format!("{}/{}", self.media_type, self.subtype)
     }
+
+    /// Set or replace the `charset` parameter, returning `self`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use philiprehberger_typed_headers::ContentType;
+    ///
+    /// let ct = ContentType::json().with_charset("utf-8");
+    /// assert_eq!(ct.charset(), Some("utf-8"));
+    /// assert_eq!(ct.to_string(), "application/json; charset=utf-8");
+    /// ```
+    pub fn with_charset(self, charset: &str) -> Self {
+        self.with_param("charset", charset)
+    }
+
+    /// Set or replace an arbitrary parameter, returning `self`.
+    ///
+    /// Parameter names are stored lowercase to match parsing behavior.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use philiprehberger_typed_headers::ContentType;
+    ///
+    /// let ct = ContentType::multipart().with_param("boundary", "----abc123");
+    /// assert_eq!(ct.to_string(), "multipart/form-data; boundary=----abc123");
+    /// ```
+    pub fn with_param(mut self, key: &str, value: &str) -> Self {
+        let key_lower = key.to_lowercase();
+        if let Some(existing) = self.params.iter_mut().find(|(k, _)| k == &key_lower) {
+            existing.1 = value.to_string();
+        } else {
+            self.params.push((key_lower, value.to_string()));
+        }
+        self
+    }
 }
 
 impl fmt::Display for ContentType {
@@ -524,6 +561,23 @@ impl Authorization {
             password: Some(pass.to_string()),
         }
     }
+
+    /// Create a custom-scheme authorization (e.g. Digest, Hawk).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use philiprehberger_typed_headers::Authorization;
+    ///
+    /// let auth = Authorization::custom("Hawk", "id=\"abc\", mac=\"xyz\"");
+    /// assert_eq!(auth.to_string(), "Hawk id=\"abc\", mac=\"xyz\"");
+    /// ```
+    pub fn custom(scheme: &str, credentials: &str) -> Self {
+        Self::Custom {
+            scheme: scheme.to_string(),
+            credentials: credentials.to_string(),
+        }
+    }
 }
 
 impl fmt::Display for Authorization {
@@ -720,8 +774,10 @@ pub struct SetCookie {
     path: Option<String>,
     domain: Option<String>,
     max_age: Option<u64>,
+    expires: Option<String>,
     secure: bool,
     http_only: bool,
+    partitioned: bool,
     same_site: Option<SameSite>,
 }
 
@@ -748,8 +804,10 @@ impl SetCookie {
             path: None,
             domain: None,
             max_age: None,
+            expires: None,
             secure: false,
             http_only: false,
+            partitioned: false,
             same_site: None,
         };
         for attr in parts {
@@ -762,6 +820,10 @@ impl SetCookie {
                 cookie.secure = true;
             } else if lower == "httponly" {
                 cookie.http_only = true;
+            } else if lower == "partitioned" {
+                cookie.partitioned = true;
+            } else if let Some(v) = strip_prefix_ci(attr, "expires=") {
+                cookie.expires = Some(v.to_string());
             } else if let Some(v) = strip_prefix_ci(attr, "path=") {
                 cookie.path = Some(v.to_string());
             } else if let Some(v) = strip_prefix_ci(attr, "domain=") {
@@ -794,8 +856,10 @@ impl SetCookie {
             path: None,
             domain: None,
             max_age: None,
+            expires: None,
             secure: false,
             http_only: false,
+            partitioned: false,
             same_site: None,
         }
     }
@@ -845,6 +909,29 @@ impl SetCookie {
         self.same_site = Some(ss);
         self
     }
+
+    /// Set the Expires attribute. The value is an opaque HTTP-date string —
+    /// no date validation is performed.
+    pub fn expires(mut self, date: &str) -> Self {
+        self.expires = Some(date.to_string());
+        self
+    }
+
+    /// Returns the Expires attribute value if set.
+    pub fn expires_value(&self) -> Option<&str> {
+        self.expires.as_deref()
+    }
+
+    /// Set the Partitioned flag (CHIPS — partitioned cookie storage).
+    pub fn partitioned(mut self) -> Self {
+        self.partitioned = true;
+        self
+    }
+
+    /// Returns true if the Partitioned flag is set.
+    pub fn is_partitioned(&self) -> bool {
+        self.partitioned
+    }
 }
 
 impl fmt::Display for SetCookie {
@@ -859,6 +946,9 @@ impl fmt::Display for SetCookie {
         if let Some(ma) = self.max_age {
             write!(f, "; Max-Age={ma}")?;
         }
+        if let Some(ref e) = self.expires {
+            write!(f, "; Expires={e}")?;
+        }
         if self.secure {
             write!(f, "; Secure")?;
         }
@@ -867,6 +957,9 @@ impl fmt::Display for SetCookie {
         }
         if let Some(ref ss) = self.same_site {
             write!(f, "; SameSite={ss}")?;
+        }
+        if self.partitioned {
+            write!(f, "; Partitioned")?;
         }
         Ok(())
     }
@@ -1431,6 +1524,72 @@ mod tests {
     fn etag_invalid() {
         assert!(ETag::parse("abc").is_err());
         assert!(ETag::parse("\"").is_err());
+    }
+
+    // -- New v0.2.0 surface -------------------------------------------------
+
+    #[test]
+    fn content_type_with_charset_adds_param() {
+        let ct = ContentType::json().with_charset("utf-8");
+        assert_eq!(ct.charset(), Some("utf-8"));
+        assert_eq!(ct.to_string(), "application/json; charset=utf-8");
+    }
+
+    #[test]
+    fn content_type_with_charset_replaces_existing() {
+        let ct = ContentType::parse("text/html; charset=iso-8859-1").unwrap();
+        let updated = ct.with_charset("utf-8");
+        assert_eq!(updated.charset(), Some("utf-8"));
+        // No duplicate charset parameter
+        assert_eq!(updated.to_string(), "text/html; charset=utf-8");
+    }
+
+    #[test]
+    fn content_type_with_param_arbitrary() {
+        let ct = ContentType::multipart().with_param("boundary", "----abc123");
+        assert_eq!(ct.to_string(), "multipart/form-data; boundary=----abc123");
+    }
+
+    #[test]
+    fn authorization_custom_constructor() {
+        let auth = Authorization::custom("Hawk", "id=\"abc\"");
+        match &auth {
+            Authorization::Custom { scheme, credentials } => {
+                assert_eq!(scheme, "Hawk");
+                assert_eq!(credentials, "id=\"abc\"");
+            }
+            _ => panic!("expected Custom"),
+        }
+        assert_eq!(auth.to_string(), "Hawk id=\"abc\"");
+    }
+
+    #[test]
+    fn set_cookie_expires_roundtrip() {
+        let cookie = SetCookie::new("session", "abc")
+            .expires("Wed, 21 Oct 2026 07:28:00 GMT");
+        let s = cookie.to_string();
+        assert!(s.contains("Expires=Wed, 21 Oct 2026 07:28:00 GMT"));
+
+        let parsed = SetCookie::parse(&s).unwrap();
+        assert_eq!(
+            parsed.expires_value(),
+            Some("Wed, 21 Oct 2026 07:28:00 GMT")
+        );
+    }
+
+    #[test]
+    fn set_cookie_partitioned_roundtrip() {
+        let cookie = SetCookie::new("__Host-session", "xyz")
+            .secure()
+            .http_only()
+            .same_site(SameSite::None)
+            .partitioned();
+        let s = cookie.to_string();
+        assert!(s.contains("Partitioned"));
+
+        let parsed = SetCookie::parse(&s).unwrap();
+        assert!(parsed.is_partitioned());
+        assert!(parsed.secure);
     }
 
     // -- Base64 roundtrip ---------------------------------------------------

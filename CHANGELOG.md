@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 (2026-04-27)
+
+- Add `ContentType::with_charset()` and `ContentType::with_param()` builders
+- Add `Authorization::custom(scheme, credentials)` constructor
+- Add `SetCookie::expires()` builder + parsing of the `Expires=` attribute
+- Add `SetCookie::partitioned()` builder + parsing of the `Partitioned` attribute (CHIPS)
+
 ## 0.1.4 (2026-03-31)
 
 - Standardize README to 3-badge format with emoji Support section

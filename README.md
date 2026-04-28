@@ -10,7 +10,7 @@ Strongly-typed HTTP header parsing and construction for common headers
 
 ```toml
 [dependencies]
-philiprehberger-typed-headers = "0.1.3"
+philiprehberger-typed-headers = "0.2.0"
 ```
 
 ## Usage
@@ -25,6 +25,10 @@ assert_eq!(ct.charset(), Some("utf-8"));
 // Convenience constructors
 let json = ContentType::json();
 let html = ContentType::html();
+
+// Builder helpers for charset and arbitrary parameters
+let json_utf8 = ContentType::json().with_charset("utf-8");
+let multipart = ContentType::multipart().with_param("boundary", "----abc123");
 ```
 
 ### Cache-Control
@@ -78,6 +82,14 @@ let cookie = SetCookie::new("session", "abc123")
     .same_site(SameSite::Strict)
     .path("/")
     .max_age(3600);
+
+// Expires attribute and Partitioned (CHIPS) flag
+let partitioned = SetCookie::new("__Host-session", "xyz")
+    .secure()
+    .http_only()
+    .same_site(SameSite::None)
+    .expires("Wed, 21 Oct 2026 07:28:00 GMT")
+    .partitioned();
 ```
 
 ### Content-Disposition
@@ -117,6 +129,8 @@ assert!(!strong.strong_match(&weak)); // one is weak
 | `ContentType::multipart()` | `multipart/form-data` |
 | `ContentType::xml()` | `application/xml` |
 | `ContentType::octet_stream()` | `application/octet-stream` |
+| `ContentType::with_charset(charset)` | Set or replace the `charset` parameter |
+| `ContentType::with_param(key, value)` | Set or replace an arbitrary parameter |
 | `CacheControl` | Cache-Control directives with builder pattern |
 | `CacheControl::parse(s)` | Parse a Cache-Control header string |
 | `CacheControl::new()` | Create empty cache control (builder start) |
@@ -124,12 +138,15 @@ assert!(!strong.strong_match(&weak)); // one is weak
 | `Authorization::parse(s)` | Parse an Authorization header string |
 | `Authorization::bearer(token)` | Create a Bearer authorization |
 | `Authorization::basic(user, pass)` | Create a Basic authorization (base64 encoded) |
+| `Authorization::custom(scheme, credentials)` | Create a custom-scheme authorization |
 | `Accept` | Accept header with quality-based content negotiation |
 | `Accept::parse(s)` | Parse an Accept header string |
 | `Accept::best_match(available)` | Content negotiation against available types |
 | `SetCookie` | Set-Cookie with all standard attributes |
 | `SetCookie::parse(s)` | Parse a Set-Cookie header string |
 | `SetCookie::new(name, value)` | Create a new cookie (builder start) |
+| `SetCookie::expires(date)` | Set the Expires attribute (opaque date string) |
+| `SetCookie::partitioned()` | Set the Partitioned flag (CHIPS) |
 | `ContentDisposition` | Content-Disposition for inline/attachment |
 | `ContentDisposition::parse(s)` | Parse a Content-Disposition header string |
 | `ContentDisposition::attachment(filename)` | Create an attachment disposition |
